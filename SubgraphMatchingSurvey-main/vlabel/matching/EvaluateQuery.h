@@ -15,7 +15,8 @@
 #include <bitset>
 
 #define FullCoverage // MatCoの最適化用
-// #define CP2LE
+
+#define CP2LE
 
 enum topkVEnum {
     VALUE_5 = 5,

@@ -10,7 +10,8 @@
 #include <random>
 
 #define FullCoverage // MatCoの最適化用
-// #define CP2LE
+
+#define CP2LE
 
 #if ENABLE_QFLITER == 1
 BSRGraph ***EvaluateQuery::qfliter_bsr_graph_;
@@ -8237,23 +8238,24 @@ EvaluateQuery::DIVSMFE(const Graph *data_graph, const Graph *query_graph,ui *&no
 ui EvaluateQuery::PruneDepth(const Graph *query_graph, ui *order){
     const ui num_vertices = query_graph->getVerticesCount();
     ui prune_depth = num_vertices - 1;
-    ui **bn; // bn[u]は頂点uの隣接リスト
-    ui *bn_count;
-    generateBN(query_graph, order, bn, bn_count);
+    
 
     std::vector<bool> AllRN(num_vertices, false);
     for (ui i = 0; i < num_vertices - 1; ++i){
         std::fill(AllRN.begin(), AllRN.end(), false);
         for (ui s = 0; s <= i; ++s){
             ui uf = order[s];
-            for (ui k = 0; k < bn_count[uf]; ++k){
-                ui neighbor = bn[uf][k];
+            ui neighbor_count;
+            const ui* neighbors = query_graph->getVertexNeighbors(uf, neighbor_count);
+            for (ui k = 0; k < neighbor_count; ++k) {
+                ui neighbor = neighbors[k];
                 AllRN[neighbor] = true;
             }
         }
         bool flag = true;
         for (ui j = i + 1; j < num_vertices; ++j){
             ui ub = order[j];
+            std::cout<<"AllRN[ub]: "<<AllRN[ub]<<std::endl;
             if (!AllRN[ub]){
                 flag = false;
                 break;
@@ -8264,11 +8266,7 @@ ui EvaluateQuery::PruneDepth(const Graph *query_graph, ui *order){
             break;
         }
     }
-    for (ui i = 0; i < num_vertices; ++i){
-        delete[] bn[i];
-    }
-    delete[] bn;
-    delete[] bn_count;
+    
 
     return prune_depth;
 }
@@ -8366,8 +8364,9 @@ EvaluateQuery::MatCo(const Graph *query_graph, const Graph *data_graph, ui **can
             query_adj_matrix[i][neighbors[j]] = true;
         }
     }
-    #ifdef FullCoverage
+    #ifdef FullCoverage // ここに間違いがある.
        ui prune_depth = PruneDepth(query_graph, order);
+       std::cout<<"Prune_Depth is: "<<prune_depth<<std::endl;
     #endif
     #ifdef CP2LE
        ui mutiexp_depth = MutiexpDepth(query_graph, order);
@@ -8593,7 +8592,7 @@ void EvaluateQuery::FindMatCo(ui depth, std::vector<ui>& current_match, MatCoCon
     #endif
     #ifdef CP2LE
         if (depth == context.mutiexp_depth){
-            // mutiExpansion(current_match, context);
+            mutiExpansion(current_match, context);
             return;
         }
     #endif
@@ -8611,7 +8610,7 @@ void EvaluateQuery::FindMatCo(ui depth, std::vector<ui>& current_match, MatCoCon
     }
     if (candidates_for_u.empty()) return;
 
-    for (ui v : candidates_for_u){
+    for (ui v : candidates_for_u){ // Algo2のline 11
         if (context.visited_vertices[v]){
             continue;
         }
