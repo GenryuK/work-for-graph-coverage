@@ -1,0 +1,1 @@
+./matching/SubgraphMatching.out -d ../../dataset/yeast/data_graph/yeast.graph -q ../../dataset/yeast/query_MatCo/query_2.graph -filter VEQ -order CFL -engine MMI -num -1 -symmetry 1 -FairT 2 -time 10 -SF Coverage
