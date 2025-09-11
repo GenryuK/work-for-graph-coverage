@@ -8303,6 +8303,7 @@ ui EvaluateQuery::MutiexpDepth(const Graph *query_graph, ui *order){
 
 enumResult
 EvaluateQuery::MatCo(const Graph *query_graph, const Graph *data_graph, ui **candidates, ui *candidates_count, ui *order, size_t output_limit_num){
+    auto start2 = std::chrono::steady_clock::now();
     const ui qsize = query_graph->getVerticesCount();
     // std::cout<<"qsize: "<<qsize<<std::endl;
     const ui max_degree = data_graph->getGraphMaxDegree();
@@ -8395,8 +8396,13 @@ EvaluateQuery::MatCo(const Graph *query_graph, const Graph *data_graph, ui **can
     std::vector<ui> initial_match(qsize, UNMATCHED);
 
     std::cout << "Number of candidates for the first vertex: " << context.candidate_sets[0][0].size() << std::endl;
+    auto end2 = std::chrono::steady_clock::now();
+    double time_in_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(end2 - start2).count();
 
-    for (ui start_data_vertex : context.candidate_sets[0][0]){
+    std::cout << "Initial candidates for the first vertex: " << context.candidate_sets[0][0].size() << std::endl;
+
+    for (ui start_data_vertex : context.candidate_sets[0][0]){ // loop回数は正しい
+        // ここではフィルタリングされた頂点でループ
         initial_match[start_query_vertex] = start_data_vertex;
         context.visited_vertices[start_data_vertex] = true;
 
@@ -8410,11 +8416,16 @@ EvaluateQuery::MatCo(const Graph *query_graph, const Graph *data_graph, ui **can
     enumResult s;
     s.embedding_cnt = context.match_count;
     s.Can_embed = coverage_count;
+    // auto end2 = std::chrono::steady_clock::now();
+    // double time_in_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(end2 - start2).count();
+
+std::cout << "MatCo time (ms): " << time_in_ns * 1000000 << std::endl;
 
     return s;
 }
 
 bool EvaluateQuery::computeCandidates(ui depth, const std::vector<ui>& current_match, MatCoContext& context){
+    //auto start2 = std::chrono::steady_clock::now();
     ui uf = context.order[depth - 1];
     ui vf = current_match[uf];
 
@@ -8423,14 +8434,32 @@ bool EvaluateQuery::computeCandidates(ui depth, const std::vector<ui>& current_m
     std::vector<ui> vf_nbrs_vec(vf_neighbors, vf_neighbors + vf_neighbor_count);
     std::sort(vf_nbrs_vec.begin(), vf_nbrs_vec.end());
 
+    // auto end2 = std::chrono::steady_clock::now();
+    // double time_in_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(end2 - start2).count();
+    // std::cout << "detecting overhead time (ms): " << time_in_ns / 1000000 << std::endl;
+
+    auto start2 = std::chrono::steady_clock::now();
+
+    int cnt_1;
+    int cnt_2;
+    int cnt_3;
+    cnt_1 = 0;
+    cnt_2 = 0;
+    cnt_3 = 0;
+
     for (ui i = depth; i < context.query_graph->getVerticesCount(); ++i){
+        cnt_1 = cnt_1 + 1;
         ui ub = context.order[i];
         if (context.query_adj_matrix[uf][ub]){
             context.candidate_sets[depth][i].clear(); // ここまではComputeCandと同じ
             std::vector<ui>& previous_candidates = context.candidate_sets[depth - 1][i];
-            if (previous_candidates.empty()) {
+            //std::cout<<"size of candidate_sets: "<<context.candidate_sets[depth - 1][i].size()<<std::endl;
+            if (context.candidate_sets[depth - 1][i].size() == 329) { // ここは、candidate_setsの初期値を直して０に変える
+                //std::cout << "Size of vf_nbrs_vec: " << vf_nbrs_vec.size() << std::endl;
                 for (ui vf_neighbor : vf_nbrs_vec) {
+                    cnt_2 = cnt_2 + 1;
                     if (context.data_graph->getVertexLabel(vf_neighbor) == context.query_graph->getVertexLabel(ub)) {
+                        cnt_3 = cnt_3 + 1;
                         context.candidate_sets[depth][i].push_back(vf_neighbor);
                     }
                 }
@@ -8446,6 +8475,11 @@ bool EvaluateQuery::computeCandidates(ui depth, const std::vector<ui>& current_m
             context.candidate_sets[depth][i] = context.candidate_sets[depth - 1][i];
         }
     }
+    auto end2 = std::chrono::steady_clock::now();
+    double time_in_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(end2 - start2).count();
+    //std::cout << "detecting overhead time (ms): " << time_in_ns / 1000000 << std::endl;
+
+    // std::cout<<"cnt_1: "<<cnt_1<<", "<<"cnt_2: "<<cnt_2<<", "<<"cnt_3: "<<cnt_3<<std::endl;
     return true;
 }
 
@@ -8577,14 +8611,19 @@ void EvaluateQuery::countResults(std::vector<ui>& current_match, MatCoContext& c
 #endif
 
 void EvaluateQuery::FindMatCo(ui depth, std::vector<ui>& current_match, MatCoContext& context){
+    // reach_time limit はこのあたりにつける
     if (context.match_count >= context.output_limit){
         return;
     }
+    //auto start2 = std::chrono::steady_clock::now();
     if (depth > 0){
         if (!computeCandidates(depth, current_match, context)){ // Algo2の6line
             return;
         }
     }
+    // auto end2 = std::chrono::steady_clock::now();
+    // double time_in_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(end2 - start2).count();
+    // std::cout << "detecting overhead time (ms): " << time_in_ns / 1000000 << std::endl;
     #ifdef FullCoverage
         if (depth >= context.prune_depth && fullCoveragePrune(depth, current_match, context)){
             return;

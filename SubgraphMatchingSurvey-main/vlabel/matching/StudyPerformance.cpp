@@ -406,7 +406,9 @@ if (enable_symmetry) {
     size_t valid_vtx_count = 0;
     sscanf(input_time_limit.c_str(), "%zu", &time_limit); 
     int TimeL1= stoi(TimeL);
-    start = std::chrono::high_resolution_clock::now();
+    // start = std::chrono::high_resolution_clock::now();
+    auto start1 = std::chrono::steady_clock::now();
+    start1 = std::chrono::steady_clock::now();
     //cout<<input_engine_type<<endl;
     if (input_engine_type == "EXPLORE") {       
         embedding_count = EvaluateQuery::exploreGraph(data_graph, query_graph, edge_matrix, candidates,
@@ -579,8 +581,10 @@ if (enable_symmetry) {
         exit(-1);
     }
 
-    end = std::chrono::high_resolution_clock::now();
-    double enumeration_time_in_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
+    // end = std::chrono::high_resolution_clock::now();
+    auto end1 = std::chrono::steady_clock::now();
+    double enumeration_time_in_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(end1 - start1).count();
+    // double enumeration_time_in_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
 
 #ifdef DISTRIBUTION
     std::ofstream outfile (input_distribution_file_path , std::ofstream::binary);
