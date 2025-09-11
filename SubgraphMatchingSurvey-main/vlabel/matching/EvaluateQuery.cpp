@@ -9,7 +9,7 @@
 #include "utility/pretty_print.h"
 #include <random>
 
-// #define FullCoverage // MatCoの最適化用
+#define FullCoverage // MatCoの最適化用
 // #define CP2LE
 
 #if ENABLE_QFLITER == 1
@@ -8582,7 +8582,7 @@ void EvaluateQuery::FindMatCo(ui depth, std::vector<ui>& current_match, MatCoCon
         return;
     }
     if (depth > 0){
-        if (!computeCandidates(depth, current_match, context)){
+        if (!computeCandidates(depth, current_match, context)){ // Algo2の6line
             return;
         }
     }
@@ -8618,9 +8618,9 @@ void EvaluateQuery::FindMatCo(ui depth, std::vector<ui>& current_match, MatCoCon
         current_match[u] = v;
         context.visited_vertices[v] = true;
 
-        if (depth == context.query_graph->getVerticesCount() - 1){
+        if (depth == context.query_graph->getVerticesCount() - 1){ // Algo2の2-5
             context.match_count++;
-            for (auto mapped_v : current_match){
+            for (auto mapped_v : current_match){ // まだ見つかってない頂点を記録していく
                 if (mapped_v != std::numeric_limits<ui>::max()){
                     context.key_vertex_set[mapped_v] = true;
                 }

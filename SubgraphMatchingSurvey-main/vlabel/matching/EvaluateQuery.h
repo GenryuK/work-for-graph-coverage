@@ -14,7 +14,7 @@
 #include <unordered_set>
 #include <bitset>
 
-// #define FullCoverage // MatCoの最適化用
+#define FullCoverage // MatCoの最適化用
 // #define CP2LE
 
 enum topkVEnum {
