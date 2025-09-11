@@ -11,7 +11,7 @@
 
 #define FullCoverage // MatCoの最適化用
 
-#define CP2LE
+// #define CP2LE
 
 #if ENABLE_QFLITER == 1
 BSRGraph ***EvaluateQuery::qfliter_bsr_graph_;
@@ -8364,7 +8364,7 @@ EvaluateQuery::MatCo(const Graph *query_graph, const Graph *data_graph, ui **can
             query_adj_matrix[i][neighbors[j]] = true;
         }
     }
-    #ifdef FullCoverage // ここに間違いがある.
+    #ifdef FullCoverage 
        ui prune_depth = PruneDepth(query_graph, order);
        std::cout<<"Prune_Depth is: "<<prune_depth<<std::endl;
     #endif
