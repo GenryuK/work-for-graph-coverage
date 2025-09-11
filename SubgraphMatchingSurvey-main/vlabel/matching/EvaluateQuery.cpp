@@ -8355,6 +8355,8 @@ EvaluateQuery::MatCo(const Graph *query_graph, const Graph *data_graph, ui **can
         candidate_sets[0][i].assign(candidates[query_vertex_id], candidates[query_vertex_id] + candidates_count[query_vertex_id]);
     }
 
+    // candidate_sets[0][0].assign(candidates[order[0]], candidates[order[0]] + candidates_count[order[0]]);
+
     // std::cout<<"3"<<std::endl;
 
     for (ui i = 0; i < qsize; ++i){
@@ -8393,6 +8395,8 @@ EvaluateQuery::MatCo(const Graph *query_graph, const Graph *data_graph, ui **can
     ui start_query_vertex = order[0];
     std::vector<ui> initial_match(qsize, UNMATCHED);
 
+    std::cout << "Number of candidates for the first vertex: " << context.candidate_sets[0][0].size() << std::endl;
+
     for (ui start_data_vertex : context.candidate_sets[0][0]){
         initial_match[start_query_vertex] = start_data_vertex;
         context.visited_vertices[start_data_vertex] = true;
@@ -8412,8 +8416,7 @@ EvaluateQuery::MatCo(const Graph *query_graph, const Graph *data_graph, ui **can
 }
 
 bool EvaluateQuery::computeCandidates(ui depth, const std::vector<ui>& current_match, MatCoContext& context){
-    ui uf_ordered_idx = depth - 1;
-    ui uf = context.order[uf_ordered_idx];
+    ui uf = context.order[depth - 1];
     ui vf = current_match[uf];
 
     ui vf_neighbor_count;
@@ -8424,10 +8427,21 @@ bool EvaluateQuery::computeCandidates(ui depth, const std::vector<ui>& current_m
     for (ui i = depth; i < context.query_graph->getVerticesCount(); ++i){
         ui ub = context.order[i];
         if (context.query_adj_matrix[uf][ub]){
-            context.candidate_sets[depth][i].clear();
+            context.candidate_sets[depth][i].clear(); // ここまではComputeCandと同じ
             std::vector<ui>& previous_candidates = context.candidate_sets[depth - 1][i];
-            std::sort(previous_candidates.begin(), previous_candidates.end());
-            std::set_intersection(previous_candidates.begin(), previous_candidates.end(), vf_nbrs_vec.begin(), vf_nbrs_vec.end(), std::back_inserter(context.candidate_sets[depth][i]));
+            if (previous_candidates.empty()) {
+                for (ui vf_neighbor : vf_nbrs_vec) {
+                    if (context.data_graph->getVertexLabel(vf_neighbor) == context.query_graph->getVertexLabel(ub)) {
+                        context.candidate_sets[depth][i].push_back(vf_neighbor);
+                    }
+                }
+            } 
+            else {
+                std::sort(previous_candidates.begin(), previous_candidates.end());
+                std::set_intersection(previous_candidates.begin(), previous_candidates.end(), 
+                                      vf_nbrs_vec.begin(), vf_nbrs_vec.end(), 
+                                      std::back_inserter(context.candidate_sets[depth][i]));
+            }
             if (context.candidate_sets[depth][i].empty()) return false;
         } else {
             context.candidate_sets[depth][i] = context.candidate_sets[depth - 1][i];
@@ -8587,6 +8601,15 @@ void EvaluateQuery::FindMatCo(ui depth, std::vector<ui>& current_match, MatCoCon
     const ui u_ordered_idx = depth;
     const ui u = context.order[u_ordered_idx];
     auto& candidates_for_u = context.candidate_sets[depth][u_ordered_idx];
+
+    if (candidates_for_u.empty()) {
+        for (ui i = 0; i < context.data_graph->getVerticesCount(); ++i) {
+            if (context.query_graph->getVertexLabel(u) == context.data_graph->getVertexLabel(i)) {
+                candidates_for_u.push_back(i);
+            }
+        }
+    }
+    if (candidates_for_u.empty()) return;
 
     for (ui v : candidates_for_u){
         if (context.visited_vertices[v]){
