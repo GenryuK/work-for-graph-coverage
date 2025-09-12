@@ -251,6 +251,9 @@ private:
         std::vector<bool>& key_vertex_set;
         size_t& match_count;
 
+        double& manage_time;
+        size_t& call_count;
+
         MatCoContext(
             const Graph* qg,
             const Graph* dg,
@@ -267,7 +270,9 @@ private:
             std::vector<std::vector<bool>>& csf,
             std::vector<bool>& vv,
             std::vector<bool>& kvs,
-            size_t& mc
+            size_t& mc,
+            double& compute_time,
+            size_t& cc
         )
             : query_graph(qg), data_graph(dg), order(ord), query_adj_matrix(adj),
               output_limit(limit),
@@ -278,11 +283,13 @@ private:
               mutiexp_depth(md),
 #endif
               candidate_sets(cs), candidate_set_flags(csf), visited_vertices(vv), key_vertex_set(kvs),
-              match_count(mc)
+              match_count(mc), manage_time(compute_time), call_count(cc)
         {
-            // 本体は空
+            
         }
     };
+
+    //int time_manage;
 
     // 最適化の部分. FullCoverageでonoffされてる
     static bool fullCoveragePrune(ui depth, const std::vector<ui>& current_match, MatCoContext& context);
@@ -290,6 +297,7 @@ private:
     static void mutiExpansion(std::vector<ui>& current_match, MatCoContext& context);
     static bool mutiExpTest(uint test_depth, const std::vector<uint>& label_same_index, std::vector<ui>& current_match, MatCoContext& context);
     static void countResults(std::vector<ui>& current_match, MatCoContext& context);
+    static void FlushFlag(ui depth, MatCoContext& context);
 
     
 

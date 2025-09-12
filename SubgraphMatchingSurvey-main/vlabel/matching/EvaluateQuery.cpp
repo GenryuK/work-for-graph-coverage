@@ -8318,6 +8318,9 @@ EvaluateQuery::MatCo(const Graph *query_graph, const Graph *data_graph, ui **can
     std::vector<std::vector<bool>> query_adj_matrix(qsize, std::vector<bool>(qsize, false));
     size_t match_count = 0;
 
+    double manage_time = 0.0;
+    size_t call_count = 0;
+
     // std::cout<<"1."<<std::endl;
     // std::cout<<"1.1"<<std::endl;
     candidate_sets.reserve(qsize);
@@ -8348,11 +8351,13 @@ EvaluateQuery::MatCo(const Graph *query_graph, const Graph *data_graph, ui **can
 
     // std::cout<<"4"<<std::endl;
 
-    for (ui i = 0; i < qsize; ++i){ // ここは必要なのか？
-        // std::cout<<"4.i: 1."<<i<<std::endl;
-        ui query_vertex_id = order[i];
-        candidate_sets[0][i].assign(candidates[query_vertex_id], candidates[query_vertex_id] + candidates_count[query_vertex_id]);
-    }
+    // for (ui i = 0; i < qsize; ++i){ // ここは必要なのか？ ここが元凶？
+    //     // std::cout<<"4.i: 1."<<i<<std::endl;
+    //     ui query_vertex_id = order[i];
+    //     candidate_sets[0][i].assign(candidates[query_vertex_id], candidates[query_vertex_id] + candidates_count[query_vertex_id]);
+    // }
+    ui query_vertex_id = order[0];
+    candidate_sets[0][0].assign(candidates[query_vertex_id], candidates[query_vertex_id] + candidates_count[query_vertex_id]);
 
     // candidate_sets[0][0].assign(candidates[order[0]], candidates[order[0]] + candidates_count[order[0]]);
 
@@ -8389,7 +8394,9 @@ EvaluateQuery::MatCo(const Graph *query_graph, const Graph *data_graph, ui **can
         candidate_set_flags,
         visited_vertices,
         key_vertex_set,
-        match_count
+        match_count,
+        manage_time,
+        call_count
     );
 
     ui start_query_vertex = order[0];
@@ -8420,6 +8427,8 @@ EvaluateQuery::MatCo(const Graph *query_graph, const Graph *data_graph, ui **can
     // double time_in_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(end2 - start2).count();
 
 std::cout << "MatCo time (ms): " << time_in_ns * 1000000 << std::endl;
+std::cout << "Total time spent in computeCandidates (ms): " << manage_time / 1000000.0 << std::endl;
+std::cout << "Total recursive calls: " << context.call_count << std::endl;
 
     return s;
 }
@@ -8438,7 +8447,7 @@ bool EvaluateQuery::computeCandidates(ui depth, const std::vector<ui>& current_m
     // double time_in_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(end2 - start2).count();
     // std::cout << "detecting overhead time (ms): " << time_in_ns / 1000000 << std::endl;
 
-    auto start2 = std::chrono::steady_clock::now();
+    //auto start2 = std::chrono::steady_clock::now();
 
     int cnt_1;
     int cnt_2;
@@ -8448,13 +8457,13 @@ bool EvaluateQuery::computeCandidates(ui depth, const std::vector<ui>& current_m
     cnt_3 = 0;
 
     for (ui i = depth; i < context.query_graph->getVerticesCount(); ++i){
-        cnt_1 = cnt_1 + 1;
+        //cnt_1 = cnt_1 + 1;
         ui ub = context.order[i];
         if (context.query_adj_matrix[uf][ub]){
             context.candidate_sets[depth][i].clear(); // ここまではComputeCandと同じ
             std::vector<ui>& previous_candidates = context.candidate_sets[depth - 1][i];
             //std::cout<<"size of candidate_sets: "<<context.candidate_sets[depth - 1][i].size()<<std::endl;
-            if (context.candidate_sets[depth - 1][i].size() == 329) { // ここは、candidate_setsの初期値を直して０に変える
+            if (context.candidate_sets[depth - 1][i].size() == 0) { // ここは、candidate_setsの初期値を直して０に変える
                 //std::cout << "Size of vf_nbrs_vec: " << vf_nbrs_vec.size() << std::endl;
                 for (ui vf_neighbor : vf_nbrs_vec) {
                     cnt_2 = cnt_2 + 1;
@@ -8469,39 +8478,62 @@ bool EvaluateQuery::computeCandidates(ui depth, const std::vector<ui>& current_m
                 std::set_intersection(previous_candidates.begin(), previous_candidates.end(), 
                                       vf_nbrs_vec.begin(), vf_nbrs_vec.end(), 
                                       std::back_inserter(context.candidate_sets[depth][i]));
+                //std::set_intersection(context.candidate_sets[depth-1][i].begin(),context.candidate_sets[depth-1][i].end(),vf_nbrs_vec.begin(),vf_nbrs_vec.end(),std::back_inserter(context.candidate_sets[depth][i]));
             }
-            if (context.candidate_sets[depth][i].empty()) return false;
+            //std::cout<<"size of candidate_sets: "<<context.candidate_sets[depth][i].size()<<std::endl;
+            if (context.candidate_sets[depth][i].empty()){
+                cnt_1 = cnt_1 + 1;
+                return false;
+            } 
         } else {
             context.candidate_sets[depth][i] = context.candidate_sets[depth - 1][i];
         }
     }
-    auto end2 = std::chrono::steady_clock::now();
-    double time_in_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(end2 - start2).count();
+    // auto end2 = std::chrono::steady_clock::now();
+    // double time_in_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(end2 - start2).count();
+    // context.manage_time += time_in_ns;
     //std::cout << "detecting overhead time (ms): " << time_in_ns / 1000000 << std::endl;
 
-    // std::cout<<"cnt_1: "<<cnt_1<<", "<<"cnt_2: "<<cnt_2<<", "<<"cnt_3: "<<cnt_3<<std::endl;
+    //std::cout<<"cnt_1: "<<cnt_1<<", "<<"cnt_2: "<<cnt_2<<", "<<"cnt_3: "<<cnt_3<<std::endl;
     return true;
 }
 
 bool EvaluateQuery::fullCoveragePrune(ui depth, const std::vector<ui>& current_match, MatCoContext& context){
+    
     const ui qsize = context.query_graph->getVerticesCount();
+    int cnt_4;
+    cnt_4 = 0;
+    int cnt_5;
+    cnt_5 = 0;
+    int cnt_6;
+    cnt_6 = 0;
     for (ui i = 0; i < depth; i++){
         ui u = context.order[i];
         if (!context.key_vertex_set[current_match[u]]){
+            //context.call_count++;
+            cnt_4 = cnt_4 + 1;
             for (ui j = depth; j < qsize; j++){
                 context.candidate_set_flags[depth][j] = context.candidate_set_flags[depth - 1][j];
             }
+            //std::cout<<"cnt_4: "<<cnt_4<<", "<<"cnt_5: "<<cnt_5<<", "<<"cnt_6: "<<cnt_6<<std::endl;
             return false;
         }
     }
     for (ui i = depth; i < qsize; i++){
-        if (context.candidate_sets[depth][i].empty()){
+        //std::cout<<"Candidate_sets size is: "<<context.candidate_sets[depth][i].size()<<std::endl;
+        if (context.candidate_sets[depth][i].size() == 0){ // ここに入ることができていない. 一時的に329にしている.
+            context.call_count++;
+            cnt_5 = cnt_5 + 1;
             for (ui j = i; j < qsize; j++){
                 context.candidate_set_flags[depth][j] = context.candidate_set_flags[depth - 1][j];
             }
+            //std::cout<<"cnt_4: "<<cnt_4<<", "<<"cnt_5: "<<cnt_5<<", "<<"cnt_6: "<<cnt_6<<std::endl;
             return false;
         }
-        if (context.candidate_set_flags[depth - 1][i]){
+        //std::cout<<"candidate_flag is: "<<context.candidate_set_flags[depth-1][i]<<std::endl;
+        if (context.candidate_set_flags[depth - 1][i]){ //ここにも入れてない
+            //context.call_count++;
+            cnt_6 = cnt_6 + 1;
             context.candidate_set_flags[depth][i] = true;
         } else {
             context.candidate_set_flags[depth][i] = true;
@@ -8511,12 +8543,26 @@ bool EvaluateQuery::fullCoveragePrune(ui depth, const std::vector<ui>& current_m
                     for (ui j = i; j < qsize; j++){
                         context.candidate_set_flags[depth][j] = context.candidate_set_flags[depth - 1][j];
                     }
+                    //std::cout<<"cnt_4: "<<cnt_4<<", "<<"cnt_5: "<<cnt_5<<", "<<"cnt_6: "<<cnt_6<<std::endl;
                     return false;
                 }
             }
         }
     }
+    //std::cout<<"cnt_4: "<<cnt_4<<", "<<"cnt_5: "<<cnt_5<<", "<<"cnt_6: "<<cnt_6<<std::endl;
+    FlushFlag(depth - 1, context);
     return true;
+}
+
+void EvaluateQuery::FlushFlag(ui flush_depth, MatCoContext& context){
+    ui u = context.order[flush_depth];
+    for (ui i = flush_depth + 1; i < context.query_graph->getVerticesCount(); i++){
+        ui ub = context.order[i];
+        if (context.query_adj_matrix[u][ub]) continue; // ここはこれでいいのか？
+        else {
+            context.candidate_set_flags[flush_depth][i] = true;
+        }
+    }
 }
 
 #ifdef CP2LE
@@ -8616,7 +8662,7 @@ void EvaluateQuery::FindMatCo(ui depth, std::vector<ui>& current_match, MatCoCon
         return;
     }
     //auto start2 = std::chrono::steady_clock::now();
-    if (depth > 0){
+    if (depth > 0){ // + 3ms
         if (!computeCandidates(depth, current_match, context)){ // Algo2の6line
             return;
         }
@@ -8624,7 +8670,12 @@ void EvaluateQuery::FindMatCo(ui depth, std::vector<ui>& current_match, MatCoCon
     // auto end2 = std::chrono::steady_clock::now();
     // double time_in_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(end2 - start2).count();
     // std::cout << "detecting overhead time (ms): " << time_in_ns / 1000000 << std::endl;
-    #ifdef FullCoverage
+    #ifdef FullCoverage // +1ms
+        //auto start2 = std::chrono::steady_clock::now();
+        //fullCoveragePrune(depth, current_match, context);
+    //     auto end2 = std::chrono::steady_clock::now();
+    //     double time_in_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(end2 - start2).count();
+    // context.manage_time += time_in_ns;
         if (depth >= context.prune_depth && fullCoveragePrune(depth, current_match, context)){
             return;
         }
@@ -8640,6 +8691,8 @@ void EvaluateQuery::FindMatCo(ui depth, std::vector<ui>& current_match, MatCoCon
     const ui u = context.order[u_ordered_idx];
     auto& candidates_for_u = context.candidate_sets[depth][u_ordered_idx];
 
+    //auto start2 = std::chrono::steady_clock::now();
+
     if (candidates_for_u.empty()) {
         for (ui i = 0; i < context.data_graph->getVerticesCount(); ++i) {
             if (context.query_graph->getVertexLabel(u) == context.data_graph->getVertexLabel(i)) {
@@ -8647,6 +8700,11 @@ void EvaluateQuery::FindMatCo(ui depth, std::vector<ui>& current_match, MatCoCon
             }
         }
     }
+
+    // auto end2 = std::chrono::steady_clock::now();
+    // double time_in_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(end2 - start2).count();
+    // context.manage_time += time_in_ns;
+
     if (candidates_for_u.empty()) return;
 
     for (ui v : candidates_for_u){ // Algo2のline 11
@@ -8665,7 +8723,12 @@ void EvaluateQuery::FindMatCo(ui depth, std::vector<ui>& current_match, MatCoCon
             }
         }
         else {
+            //auto start2 = std::chrono::steady_clock::now();
+            //context.call_count++; // 呼び出し回数も一緒
             FindMatCo(depth + 1, current_match, context);
+            // auto end2 = std::chrono::steady_clock::now();
+            // double time_in_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(end2 - start2).count();
+            // context.manage_time += time_in_ns;
         }
         context.visited_vertices[v] = false;
         if (context.match_count >= context.output_limit){
