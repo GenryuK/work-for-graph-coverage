@@ -8522,7 +8522,7 @@ bool EvaluateQuery::fullCoveragePrune(ui depth, const std::vector<ui>& current_m
     for (ui i = depth; i < qsize; i++){
         //std::cout<<"Candidate_sets size is: "<<context.candidate_sets[depth][i].size()<<std::endl;
         if (context.candidate_sets[depth][i].size() == 0){ // ここに入ることができていない. 一時的に329にしている.
-            context.call_count++;
+            //context.call_count++;
             cnt_5 = cnt_5 + 1;
             for (ui j = i; j < qsize; j++){
                 context.candidate_set_flags[depth][j] = context.candidate_set_flags[depth - 1][j];
@@ -8539,7 +8539,7 @@ bool EvaluateQuery::fullCoveragePrune(ui depth, const std::vector<ui>& current_m
             context.candidate_set_flags[depth][i] = true;
             for (auto v : context.candidate_sets[depth][i]){
                 if (!context.key_vertex_set[v]){
-                    context.candidate_set_flags[depth][i] = false;
+                    context.call_count++;
                     for (ui j = i; j < qsize; j++){
                         context.candidate_set_flags[depth][j] = context.candidate_set_flags[depth - 1][j];
                     }
