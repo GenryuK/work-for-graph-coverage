@@ -12,7 +12,7 @@
 //#include <climits>
 #define FullCoverage // MatCoの最適化用
 
-// #define CP2LE
+#define CP2LE
 
 #if ENABLE_QFLITER == 1
 BSRGraph ***EvaluateQuery::qfliter_bsr_graph_;
@@ -8276,30 +8276,59 @@ ui EvaluateQuery::PruneDepth(const Graph *query_graph, ui *order){
 
 // これはorderを最適化する操作で、orderに追加するべきか？
 ui EvaluateQuery::MutiexpDepth(const Graph *query_graph, ui *order){
-    const ui num_vertices = query_graph->getVerticesCount();
-    std::vector<ui> order_vec(order, order + num_vertices);
+    ui mutiexp_depth = UINT32_MAX;
     int sum = 0;
-    for (int i = num_vertices - 1; i >= 0; i--){
-        ui u = order_vec[i];
-        bool is_independent = true;
-        for (int j = i + 1; j < num_vertices; j++){
-            ui v = order_vec[j];
+    for (int i = query_graph->getVerticesCount()-1; i>=0; i--){
+        ui u = order[i];
+        bool flag = true;
+        for (int j = i+1; j<query_graph->getVerticesCount(); j++){
+            ui v = order[j];
             if (query_graph->checkEdgeExistence(u, v)){
-                is_independent = false;
+                flag = false;
                 break;
             }
         }
-        if (is_independent){
+        if(flag){
             sum++;
-            for (int j = i; j < num_vertices - 1; j++){
-                order_vec[j] = order_vec[j + 1];
+            for(int j = i; j<query_graph->getVerticesCount()-1; j++){
+                order[j] = order[j+1];
             }
-            order_vec[num_vertices - 1] = u;
+            order[query_graph->getVerticesCount()-1] = u;
         }
     }
-    ui mutiexp_depth = num_vertices - sum;
-    std::reverse(order_vec.begin() + mutiexp_depth, order_vec.end());
-    std::copy(order_vec.begin(), order_vec.end(), order);
+    mutiexp_depth = query_graph->getVerticesCount() - sum;
+    std::reverse(order + mutiexp_depth, order + query_graph->getVerticesCount()); // MMではorderはui
+    std::cout<<"CP2LEOrder: "<<std::endl;
+    for(int i =0 ; i<query_graph->getVerticesCount();i++){
+        std::cout<<order[i]<<" ";
+    }
+    std::cout<<std::endl;
+    std::cout<<"CP2LE_depth_:"<<mutiexp_depth;
+
+    // const ui num_vertices = query_graph->getVerticesCount();
+    // std::vector<ui> order_vec(order, order + num_vertices);
+    // int sum = 0;
+    // for (int i = num_vertices - 1; i >= 0; i--){
+    //     ui u = order_vec[i];
+    //     bool is_independent = true;
+    //     for (int j = i + 1; j < num_vertices; j++){
+    //         ui v = order_vec[j];
+    //         if (query_graph->checkEdgeExistence(u, v)){
+    //             is_independent = false;
+    //             break;
+    //         }
+    //     }
+    //     if (is_independent){
+    //         sum++;
+    //         for (int j = i; j < num_vertices - 1; j++){
+    //             order_vec[j] = order_vec[j + 1];
+    //         }
+    //         order_vec[num_vertices - 1] = u;
+    //     }
+    // }
+    // ui mutiexp_depth = num_vertices - sum;
+    // std::reverse(order_vec.begin() + mutiexp_depth, order_vec.end());
+    // std::copy(order_vec.begin(), order_vec.end(), order);
 
     return mutiexp_depth;
 }
@@ -8322,6 +8351,7 @@ EvaluateQuery::MatCo(const Graph *query_graph, const Graph *data_graph, ui **can
     std::vector<bool> visited_vertices(data_graph->getVerticesCount(), false);
     std::vector<std::vector<bool>> query_adj_matrix(qsize, std::vector<bool>(qsize, false));
     size_t match_count = 0;
+    size_t num_keyvertex = 0;
 
     double manage_time = 0.0;
     size_t call_count = 0;
@@ -8426,6 +8456,7 @@ EvaluateQuery::MatCo(const Graph *query_graph, const Graph *data_graph, ui **can
         visited_vertices,
         key_vertex_set,
         match_count,
+        num_keyvertex,
         manage_time,
         call_count,
         start_MC,
@@ -8638,92 +8669,97 @@ void EvaluateQuery::FlushFlag(ui flush_depth, MatCoContext& context){
 
 #ifdef CP2LE
 void EvaluateQuery::mutiExpansion(std::vector<ui>& current_match, MatCoContext& context){
-    const ui qsize = context.query_graph->getVerticesCount();
-    const ui UNMATCHED = std::numeric_limits<ui>::max();
 
     std::vector<ui> label_same_index;
-    std::vector<bool> label_check(qsize, false);
-
-    for (ui i = context.mutiexp_depth; i < qsize; i++){
-        if (label_check[i]) continue;
+    std::vector<bool> label_check(context.query_graph->getVerticesCount(), false);
+    for(ui i = context.mutiexp_depth; i<context.query_graph->getVerticesCount(); i++){
+        if(label_check[i]) continue;
         ui uf = context.order[i];
         label_check[i] = true;
         label_same_index.clear();
         label_same_index.push_back(i);
 
-        for (ui j = context.mutiexp_depth; j < qsize; j++){
-            if (label_check[j]) continue;
+        for(ui j = context.mutiexp_depth; j<context.query_graph->getVerticesCount(); j++){
+            if(label_check[j]) continue;
             ui ub = context.order[j];
-            if (context.query_graph->getVertexLabel(uf) == context.query_graph->getVertexLabel(ub)){
+            if(context.query_graph->getVertexLabel(uf) == context.query_graph->getVertexLabel(ub)){
                 label_same_index.push_back(j);
                 label_check[j] = true;
             }
         }
-
-        bool feasible_match_found = false;
+        bool flag = false;
         ui u_index = label_same_index[0];
         ui u = context.order[u_index];
 
-        for (ui v : context.candidate_sets[context.mutiexp_depth][u_index]){
-            if (context.visited_vertices[v]) continue;
+        for (int s=0; s<context.candidate_sets[context.mutiexp_depth][u_index].size(); s++){
+            ui v = context.candidate_sets[context.mutiexp_depth][u_index][s];
+            if(context.visited_vertices[v]) continue;
             context.visited_vertices[v] = true;
             current_match[u] = v;
-            if (mutiExpTest(1, label_same_index, current_match, context)){
+            if(mutiExpTest(1, label_same_index, current_match, context)){
                 context.visited_vertices[v] = false;
-                feasible_match_found = true;
+                flag = true;
                 break;
             }
-            current_match[u] = UNMATCHED;
+            current_match[u] = 4294967295;
             context.visited_vertices[v] = false;
         }
-        if (!feasible_match_found) return;
+        if(!flag) return;
     }
-    countResults(current_match, context);
+    countRes(current_match, context);
+    FlushFlag(context.mutiexp_depth - 1, context);
+    
 }
 
 bool EvaluateQuery::mutiExpTest(uint test_depth, const std::vector<uint>& label_same_index, std::vector<ui>& current_match, MatCoContext& context) {
-    if (test_depth == label_same_index.size()) return true;
-
-    uint u_index = label_same_index[test_depth];
-    uint u = context.order[u_index];
-    const ui UNMATCHED = std::numeric_limits<ui>::max();
-
-    for (uint v : context.candidate_sets[context.mutiexp_depth][u_index]) {
+    if (test_depth==label_same_index.size()) return true;
+    ui u_index = label_same_index[test_depth];
+    ui u = context.order[u_index];
+    for (int i = 0; i < context.candidate_sets[context.mutiexp_depth][u_index].size(); i++){
+        ui v = context.candidate_sets[context.mutiexp_depth][u_index][i];
         if (context.visited_vertices[v]) continue;
         context.visited_vertices[v] = true;
         current_match[u] = v;
-        if (mutiExpTest(test_depth + 1, label_same_index, current_match, context)) {
+        if(mutiExpTest(test_depth + 1, label_same_index, current_match, context)){
             context.visited_vertices[v] = false;
             return true;
         }
-        current_match[u] = UNMATCHED;
+        current_match[u] = 4294967295;
         context.visited_vertices[v] = false;
     }
+    
     return false;
 }
 
-void EvaluateQuery::countResults(std::vector<ui>& current_match, MatCoContext& context) {
-    bool is_new_coverage = false;
-    for (uint i = 0; i < context.query_graph->getVerticesCount(); ++i) {
-        uint u = context.order[i];
-        if (current_match[u] != std::numeric_limits<ui>::max() && !context.key_vertex_set[current_match[u]]) {
+void EvaluateQuery::countRes(std::vector<ui>& current_match, MatCoContext& context) {
+    bool flag_all_cv = true;
+    for (ui i=0; i<context.query_graph->getVerticesCount(); i++){
+        ui u = context.order[i];
+        if (context.key_vertex_set[current_match[u]] == false){
             context.key_vertex_set[current_match[u]] = true;
-            is_new_coverage = true;
+            context.num_keyvertex++;
+            flag_all_cv = false;
         }
     }
-
-    if (is_new_coverage) {
+    if (!flag_all_cv){
         context.match_count++;
     }
-
-    for (uint i = context.mutiexp_depth; i < context.query_graph->getVerticesCount(); ++i) {
-        for (auto cand : context.candidate_sets[context.mutiexp_depth][i]) {
-            if (!context.key_vertex_set[cand]) {
+    for(ui i = context.mutiexp_depth; i<context.query_graph->getVerticesCount(); i++){
+        for(auto cand:context.candidate_sets[context.mutiexp_depth][i]){
+            if(context.key_vertex_set[cand] == false){
                 context.key_vertex_set[cand] = true;
+                context.num_keyvertex++;
                 context.match_count++;
+                ui u = context.order[i];
+                current_match[u] = cand;
             }
         }
     }
+    for(ui i = context.mutiexp_depth; i<context.query_graph->getVerticesCount(); i++){
+        ui u = context.order[i];
+        current_match[u] = 4294967295;
+    }
+    
 }
 #endif
 
@@ -8760,6 +8796,8 @@ void EvaluateQuery::FindMatCo(ui depth, std::vector<ui>& current_match, MatCoCon
     #ifdef CP2LE
         if (depth == context.mutiexp_depth){
             mutiExpansion(current_match, context);
+            //std::cout<<"muti-expansion at depth: "<<depth<<std::endl;
+            context.call_count++;
             return;
         }
     #endif
@@ -8814,6 +8852,7 @@ void EvaluateQuery::FindMatCo(ui depth, std::vector<ui>& current_match, MatCoCon
                 if (context.key_vertex_set[j]) continue;
                 else {
                     //context.call_count++;
+                    context.num_keyvertex++;
                     context.key_vertex_set[j] = true;
                 }
                 // if (mapped_v != std::numeric_limits<ui>::max()){

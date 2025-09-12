@@ -16,7 +16,7 @@
 
 #define FullCoverage // MatCoの最適化用
 
-// #define CP2LE
+#define CP2LE
 
 enum topkVEnum {
     VALUE_5 = 5,
@@ -250,6 +250,7 @@ private:
         std::vector<bool>& visited_vertices;
         std::vector<bool>& key_vertex_set;
         size_t& match_count;
+        size_t& num_keyvertex;
 
         double& manage_time;
         size_t& call_count;
@@ -273,6 +274,7 @@ private:
             std::vector<bool>& vv,
             std::vector<bool>& kvs,
             size_t& mc,
+            size_t& num_key,
             double& compute_time,
             size_t& cc,
             const std::chrono::high_resolution_clock::time_point& startTime,
@@ -287,7 +289,7 @@ private:
               mutiexp_depth(md),
 #endif
               candidate_sets(cs), candidate_set_flags(csf), visited_vertices(vv), key_vertex_set(kvs),
-              match_count(mc), manage_time(compute_time), call_count(cc), start_time(startTime), time_limit_ms(timeLimitMs)
+              match_count(mc), num_keyvertex(num_key), manage_time(compute_time), call_count(cc), start_time(startTime), time_limit_ms(timeLimitMs)
         {
             
         }
@@ -300,7 +302,7 @@ private:
     // 最適化の部分. CP2LEでonoffされてる
     static void mutiExpansion(std::vector<ui>& current_match, MatCoContext& context);
     static bool mutiExpTest(uint test_depth, const std::vector<uint>& label_same_index, std::vector<ui>& current_match, MatCoContext& context);
-    static void countResults(std::vector<ui>& current_match, MatCoContext& context);
+    static void countRes(std::vector<ui>& current_match, MatCoContext& context);
     static void FlushFlag(ui depth, MatCoContext& context);
 
     
