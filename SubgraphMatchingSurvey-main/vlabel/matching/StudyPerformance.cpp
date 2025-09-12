@@ -495,7 +495,7 @@ if (enable_symmetry) {
     } else if (input_engine_type == "MatCo"){ // コマンドライン引数を読み込ませるためにQSIとMatCoを交換してる
         // ここでMatCoの導入
         std::cout<<"MatCo is running"<<std::endl;
-        s = EvaluateQuery::MatCo(query_graph, data_graph, candidates, candidates_count, matching_order, output_limit);
+        s = EvaluateQuery::MatCo(query_graph, data_graph, candidates, candidates_count, matching_order, output_limit, TimeL1);
     }
         else if (input_engine_type == "MM") {  
         //if (veq_tree == NULL) {

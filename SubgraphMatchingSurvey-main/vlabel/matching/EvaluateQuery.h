@@ -104,7 +104,7 @@ static enumResult DIVSM(const Graph *data_graph, const Graph *query_graph,ui *&n
                        ui *candidates_count, ui *order, size_t output_limit_num, size_t &call_count, int TimeL, int FairT, const std::unordered_map<VertexID, std::pair<std::set<VertexID>, std::set<VertexID>>> &ordered_constraints);
 
 // MatCo用のengine関数
-static enumResult MatCo(const Graph *query_graph, const Graph *data_graph, ui **candidates, ui *candidates_count, ui *order, size_t output_limit_num);
+static enumResult MatCo(const Graph *query_graph, const Graph *data_graph, ui **candidates, ui *candidates_count, ui *order, size_t output_limit_num, int TimeL);
 //static enumResult FindMatCo(const Graph *query_graph, const Graph *data_graph, ui **candidates, ui *candidates_count, ui *order, size_t output_limit_num);
 
 static enumResult
@@ -253,6 +253,8 @@ private:
 
         double& manage_time;
         size_t& call_count;
+        std::chrono::high_resolution_clock::time_point start_time;
+        int time_limit_ms;
 
         MatCoContext(
             const Graph* qg,
@@ -272,7 +274,9 @@ private:
             std::vector<bool>& kvs,
             size_t& mc,
             double& compute_time,
-            size_t& cc
+            size_t& cc,
+            const std::chrono::high_resolution_clock::time_point& startTime,
+            int timeLimitMs
         )
             : query_graph(qg), data_graph(dg), order(ord), query_adj_matrix(adj),
               output_limit(limit),
@@ -283,7 +287,7 @@ private:
               mutiexp_depth(md),
 #endif
               candidate_sets(cs), candidate_set_flags(csf), visited_vertices(vv), key_vertex_set(kvs),
-              match_count(mc), manage_time(compute_time), call_count(cc)
+              match_count(mc), manage_time(compute_time), call_count(cc), start_time(startTime), time_limit_ms(timeLimitMs)
         {
             
         }
