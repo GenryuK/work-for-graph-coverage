@@ -8239,25 +8239,38 @@ EvaluateQuery::DIVSMFE(const Graph *data_graph, const Graph *query_graph,ui *&no
 }
 
 ui EvaluateQuery::PruneDepth(const Graph *query_graph, ui *order){
-    const ui num_vertices = query_graph->getVerticesCount();
-    ui prune_depth = num_vertices - 1;
-    
-
-    std::vector<bool> AllRN(num_vertices, false);
-    for (ui i = 0; i < num_vertices - 1; ++i){
+    ui prune_depth;
+    std:: vector<bool> AllRN(query_graph->getVerticesCount(), false);
+    for (ui i = 0; i < query_graph->getVerticesCount()-1; i++){
+        int cnt_7;
+        cnt_7 = 0;
         std::fill(AllRN.begin(), AllRN.end(), false);
-        for (ui s = 0; s <= i; ++s){
+        for (ui s = 0; s <= i; s++){
             ui uf = order[s];
-            ui neighbor_count;
-            const ui* neighbors = query_graph->getVertexNeighbors(uf, neighbor_count);
-            for (ui k = 0; k < neighbor_count; ++k) {
-                ui neighbor = neighbors[k];
+            ui neighbor_count; 
+
+            const ui* nbrs_ptr = query_graph->getVertexNeighbors(uf, neighbor_count);
+
+            std::cout << "Neighbors of vertex " << uf << ": ";
+            // ポインタと要素数を使ってforループを回す
+            for (ui i = 0; i < neighbor_count; ++i) {
+                ui neighbor = nbrs_ptr[i];
+                std::cout << neighbor << " ";
+            }
+            std::cout << std::endl; 
+
+            for (ui i = 0; i < neighbor_count; ++i) {
+                //cnt_7++;
+                ui neighbor = nbrs_ptr[i];
+                std::cout<<"neighbor: "<<neighbor<<std::endl;
                 AllRN[neighbor] = true;
             }
+            //std::cout<<"cnt_7: "<<cnt_7<<std::endl;
         }
         bool flag = true;
-        for (ui j = i + 1; j < num_vertices; ++j){
+        for (ui j = i+1; j<query_graph->getVerticesCount(); j++){
             ui ub = order[j];
+            std::cout<<"check vertex: "<<ub<<std::endl;
             std::cout<<"AllRN[ub]: "<<AllRN[ub]<<std::endl;
             if (!AllRN[ub]){
                 flag = false;
@@ -8268,21 +8281,52 @@ ui EvaluateQuery::PruneDepth(const Graph *query_graph, ui *order){
             prune_depth = i;
             break;
         }
-    }
+        }
+    
+    // const ui num_vertices = query_graph->getVerticesCount();
+    // ui prune_depth = num_vertices - 1;
+    
+
+    // std::vector<bool> AllRN(num_vertices, false);
+    // for (ui i = 0; i < num_vertices - 1; i++){
+    //     std::fill(AllRN.begin(), AllRN.end(), false);
+    //     for (ui s = 0; s <= i; s++){
+    //         ui uf = order[s];
+    //         ui neighbor_count;
+    //         const ui* neighbors = query_graph->getVertexNeighbors(uf, neighbor_count);
+    //         for (ui k = 0; k < neighbor_count; ++k) {
+    //             ui neighbor = neighbors[k];
+    //             AllRN[neighbor] = true;
+    //         }
+    //     }
+    //     bool flag = true;
+    //     for (ui j = i + 1; j < num_vertices; ++j){
+    //         ui ub = order[j];
+    //         std::cout<<"AllRN[ub]: "<<AllRN[ub]<<std::endl;
+    //         if (!AllRN[ub]){
+    //             flag = false;
+    //             break;
+    //         }
+    //     }
+    //     if (flag){
+    //         prune_depth = i;
+    //         break;
+    //     }
+    // }
     
 
     return prune_depth;
 }
 
 // これはorderを最適化する操作で、orderに追加するべきか？
-ui EvaluateQuery::MutiexpDepth(const Graph *query_graph, ui *order){
+ui EvaluateQuery::MutiexpDepth(const Graph *query_graph, MatCoContext& context){
     ui mutiexp_depth = UINT32_MAX;
     int sum = 0;
     for (int i = query_graph->getVerticesCount()-1; i>=0; i--){
-        ui u = order[i];
+        ui u = context.order[i];
         bool flag = true;
         for (int j = i+1; j<query_graph->getVerticesCount(); j++){
-            ui v = order[j];
+            ui v = context.order[j];
             if (query_graph->checkEdgeExistence(u, v)){
                 flag = false;
                 break;
@@ -8291,16 +8335,16 @@ ui EvaluateQuery::MutiexpDepth(const Graph *query_graph, ui *order){
         if(flag){
             sum++;
             for(int j = i; j<query_graph->getVerticesCount()-1; j++){
-                order[j] = order[j+1];
+                context.order[j] = context.order[j+1];
             }
-            order[query_graph->getVerticesCount()-1] = u;
+            context.order[query_graph->getVerticesCount()-1] = u;
         }
     }
     mutiexp_depth = query_graph->getVerticesCount() - sum;
-    std::reverse(order + mutiexp_depth, order + query_graph->getVerticesCount()); // MMではorderはui
+    std::reverse(context.order + mutiexp_depth, context.order + query_graph->getVerticesCount()); // MMではorderはui
     std::cout<<"CP2LEOrder: "<<std::endl;
     for(int i =0 ; i<query_graph->getVerticesCount();i++){
-        std::cout<<order[i]<<" ";
+        std::cout<<context.order[i]<<" ";
     }
     std::cout<<std::endl;
     std::cout<<"CP2LE_depth_:"<<mutiexp_depth;
@@ -8429,14 +8473,19 @@ EvaluateQuery::MatCo(const Graph *query_graph, const Graph *data_graph, ui **can
 
     #ifdef FullCoverage 
        //auto start_pd = std::chrono::steady_clock::now();
-       ui prune_depth = PruneDepth(query_graph, order);
-       std::cout<<"Prune_Depth is: "<<prune_depth<<std::endl;
+
+    //    ui prune_depth = PruneDepth(query_graph, order);
+    //    std::cout<<"Prune_Depth is: "<<prune_depth<<std::endl;
+       ui prune_depth;
+
     //    auto end_pd = std::chrono::steady_clock::now();
     //    double time_in_ns_pd = std::chrono::duration_cast<std::chrono::nanoseconds>(end_pd - start_pd).count();
     //    std::cout << "PruneDepth time (ms): " << time_in_ns_pd / 1000000 << std::endl;
     #endif
     #ifdef CP2LE
-       ui mutiexp_depth = MutiexpDepth(query_graph, order);
+
+       //ui mutiexp_depth = MutiexpDepth(query_graph, order);
+       ui mutiexp_depth;
     #endif
 
     MatCoContext context(
@@ -8462,6 +8511,8 @@ EvaluateQuery::MatCo(const Graph *query_graph, const Graph *data_graph, ui **can
         start_MC,
         TimeL
     );
+
+    mutiexp_depth = MutiexpDepth(query_graph, context);
 
     ui start_query_vertex = order[0];
     std::vector<ui> initial_match(qsize, UNMATCHED);
@@ -8669,6 +8720,7 @@ void EvaluateQuery::FlushFlag(ui flush_depth, MatCoContext& context){
 
 #ifdef CP2LE
 void EvaluateQuery::mutiExpansion(std::vector<ui>& current_match, MatCoContext& context){
+    //context.call_count++;
 
     std::vector<ui> label_same_index;
     std::vector<bool> label_check(context.query_graph->getVerticesCount(), false);
@@ -8706,6 +8758,7 @@ void EvaluateQuery::mutiExpansion(std::vector<ui>& current_match, MatCoContext& 
         }
         if(!flag) return;
     }
+    //context.call_count++;
     countRes(current_match, context);
     FlushFlag(context.mutiexp_depth - 1, context);
     
@@ -8747,6 +8800,7 @@ void EvaluateQuery::countRes(std::vector<ui>& current_match, MatCoContext& conte
         }
     }
     if (!flag_all_cv){
+        // context.call_count++;
         context.match_count++;
     }
     for(ui i = context.mutiexp_depth; i<context.query_graph->getVerticesCount(); i++){
@@ -8754,6 +8808,8 @@ void EvaluateQuery::countRes(std::vector<ui>& current_match, MatCoContext& conte
             if(context.key_vertex_set[cand] == false){
                 context.key_vertex_set[cand] = true;
                 context.num_keyvertex++;
+
+                //context.call_count++;
                 context.match_count++;
                 ui u = context.order[i];
                 current_match[u] = cand;
@@ -8770,6 +8826,7 @@ void EvaluateQuery::countRes(std::vector<ui>& current_match, MatCoContext& conte
 
 void EvaluateQuery::FindMatCo(ui depth, std::vector<ui>& current_match, MatCoContext& context){
     // reach_time limit はこのあたりにつける
+    // context.call_count++;
     auto now_MC = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(now_MC - context.start_time).count();
     if (duration > context.time_limit_ms) {
@@ -8786,6 +8843,7 @@ void EvaluateQuery::FindMatCo(ui depth, std::vector<ui>& current_match, MatCoCon
             return;
         }
     }
+    //context.call_count++;
     // auto end2 = std::chrono::steady_clock::now();
     // double time_in_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(end2 - start2).count();
     // std::cout << "detecting overhead time (ms): " << time_in_ns / 1000000 << std::endl;
@@ -8796,13 +8854,25 @@ void EvaluateQuery::FindMatCo(ui depth, std::vector<ui>& current_match, MatCoCon
     //     double time_in_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(end2 - start2).count();
     // context.manage_time += time_in_ns;
         //std::cout<<"here2"<<std::endl;
-        if (depth >= context.prune_depth && fullCoveragePrune(depth, current_match, context)){
-            return;
+
+
+        // if (depth >= context.prune_depth && fullCoveragePrune(depth, current_match, context)){
+        //     return;
+        // }
+        //context.call_count++;
+
+        if (depth >= context.prune_depth){
+            //context.call_count++;
+            if (fullCoveragePrune(depth, current_match, context)){
+                return;
+            }
         }
     #endif
+    //context.call_count++;
     #ifdef CP2LE
         //std::cout<<"here3"<<std::endl;
         if (depth == context.mutiexp_depth){
+            //context.call_count++;
             mutiExpansion(current_match, context);
             //std::cout<<"here4"<<std::endl;
             //std::cout<<"muti-expansion at depth: "<<depth<<std::endl;
@@ -8854,7 +8924,7 @@ void EvaluateQuery::FindMatCo(ui depth, std::vector<ui>& current_match, MatCoCon
         // std::cout<<"depth: "<<depth<<", query_vnum: "<<context.query_graph->getVerticesCount()-1<<std::endl;
 
         if (depth == context.query_graph->getVerticesCount() - 1){ // Algo2の2-5 ここに入れていない
-            //context.call_count++;
+            // context.call_count++;
             context.match_count++;
             for (auto j : current_match){ // まだ見つかってない頂点を記録していく (auto mapped_v : current_match)
                 //context.call_count++;
@@ -8872,7 +8942,7 @@ void EvaluateQuery::FindMatCo(ui depth, std::vector<ui>& current_match, MatCoCon
         }
         else {
             //auto start2 = std::chrono::steady_clock::now();
-            context.call_count++; // 呼び出し回数も一緒
+            //context.call_count++; // 呼び出し回数も一緒
             //std::cout<<"call_count: "<<context.call_count<<std::endl;
             FindMatCo(depth + 1, current_match, context);
             // auto end2 = std::chrono::steady_clock::now();

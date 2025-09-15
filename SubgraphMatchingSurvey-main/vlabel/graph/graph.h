@@ -36,6 +36,8 @@ private:
     std::unordered_map<LabelID, ui> labels_frequency_;
     sparse_hash_map<uint64_t, std::vector<edge>* >* edge_index_;
 
+    
+
 #if OPTIMIZED_LABELED_GRAPH == 1
     ui* labels_offsets_;
     std::unordered_map<LabelID, ui>* nlf_;
@@ -139,6 +141,11 @@ public:
         count = offsets_[id + 1] - offsets_[id];
         return neighbors_ + offsets_[id];
     }
+
+    // const std::vector<ui>& Graph::GetNeighbors(ui v) const
+    // {
+    //     return neighbors_[v];
+    // }
 
     const sparse_hash_map<uint64_t, std::vector<edge>*>* getEdgeIndex() const {
         return edge_index_;

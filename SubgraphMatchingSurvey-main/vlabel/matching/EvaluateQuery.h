@@ -235,7 +235,7 @@ private:
     struct MatCoContext {
         const Graph* query_graph;
         const Graph* data_graph;
-        const ui* order;
+        ui* order;
         const std::vector<std::vector<bool>>& query_adj_matrix;
         const size_t output_limit;
 #ifdef FullCoverage
@@ -260,7 +260,7 @@ private:
         MatCoContext(
             const Graph* qg,
             const Graph* dg,
-            const ui* ord,
+            ui* ord,
             const std::vector<std::vector<bool>>& adj,
             const size_t limit,
 #ifdef FullCoverage
@@ -314,7 +314,7 @@ private:
     static void generateBN(const Graph *query_graph, ui *order, ui **&bn, ui *&bn_count);
     // MatCoでprune_depth_, mutiexp_depth_と言う値を使いたい
     static ui PruneDepth(const Graph *query_graph, ui *order);
-    static ui MutiexpDepth(const Graph *query_graph, ui *order);
+    static ui MutiexpDepth(const Graph *query_graph, MatCoContext& context);
 
     static void allocateBuffer(const Graph *query_graph, const Graph *data_graph, ui *candidates_count, ui *&idx,
                                    ui *&idx_count, ui *&embedding, ui *&idx_embedding, ui *&temp_buffer,
