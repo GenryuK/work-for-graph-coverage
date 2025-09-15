@@ -8712,6 +8712,11 @@ void EvaluateQuery::mutiExpansion(std::vector<ui>& current_match, MatCoContext& 
 }
 
 bool EvaluateQuery::mutiExpTest(uint test_depth, const std::vector<uint>& label_same_index, std::vector<ui>& current_match, MatCoContext& context) {
+    auto now_MC = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(now_MC - context.start_time).count();
+    if (duration > context.time_limit_ms) {
+        throw TimeLimitExceededException(); 
+    }
     if (test_depth==label_same_index.size()) return true;
     ui u_index = label_same_index[test_depth];
     ui u = context.order[u_index];
@@ -8774,6 +8779,7 @@ void EvaluateQuery::FindMatCo(ui depth, std::vector<ui>& current_match, MatCoCon
         return;
     }
     //auto start2 = std::chrono::steady_clock::now();
+    //std::cout<<"here1"<<std::endl;
     if (depth > 0){ // 
         if (!computeCandidates(depth, current_match, context)){ // Algo2の6line
             //context.call_count++;
@@ -8789,20 +8795,23 @@ void EvaluateQuery::FindMatCo(ui depth, std::vector<ui>& current_match, MatCoCon
     //     auto end2 = std::chrono::steady_clock::now();
     //     double time_in_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(end2 - start2).count();
     // context.manage_time += time_in_ns;
+        //std::cout<<"here2"<<std::endl;
         if (depth >= context.prune_depth && fullCoveragePrune(depth, current_match, context)){
             return;
         }
     #endif
     #ifdef CP2LE
+        //std::cout<<"here3"<<std::endl;
         if (depth == context.mutiexp_depth){
             mutiExpansion(current_match, context);
+            //std::cout<<"here4"<<std::endl;
             //std::cout<<"muti-expansion at depth: "<<depth<<std::endl;
-            context.call_count++;
+            //context.call_count++;
             return;
         }
     #endif
 
-    
+    //std::cout<<"here4.1"<<std::endl;
     //const ui u = context.order[u_ordered_idx];
     ui u = context.order[depth];
 
@@ -8863,7 +8872,8 @@ void EvaluateQuery::FindMatCo(ui depth, std::vector<ui>& current_match, MatCoCon
         }
         else {
             //auto start2 = std::chrono::steady_clock::now();
-            //context.call_count++; // 呼び出し回数も一緒
+            context.call_count++; // 呼び出し回数も一緒
+            //std::cout<<"call_count: "<<context.call_count<<std::endl;
             FindMatCo(depth + 1, current_match, context);
             // auto end2 = std::chrono::steady_clock::now();
             // double time_in_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(end2 - start2).count();
@@ -8873,6 +8883,11 @@ void EvaluateQuery::FindMatCo(ui depth, std::vector<ui>& current_match, MatCoCon
         current_match[u] = 4294967295; // UNMATCHED = 4294967295
         if (context.match_count >= context.output_limit){
             return;
+        }
+        auto now_MC = std::chrono::high_resolution_clock::now();
+        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(now_MC - context.start_time).count();
+        if (duration > context.time_limit_ms) {
+            throw TimeLimitExceededException(); 
         }
         // time limitはここで
     }
