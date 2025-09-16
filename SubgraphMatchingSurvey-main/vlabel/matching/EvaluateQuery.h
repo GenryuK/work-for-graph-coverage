@@ -239,10 +239,10 @@ private:
         const std::vector<std::vector<bool>>& query_adj_matrix;
         const size_t output_limit;
 #ifdef FullCoverage
-        const uint prune_depth;
+        uint prune_depth;
 #endif
 #ifdef CP2LE
-        const uint mutiexp_depth;
+        uint mutiexp_depth;
 #endif
 
         std::vector<std::vector<std::vector<ui>>>& candidate_sets;
@@ -264,10 +264,10 @@ private:
             const std::vector<std::vector<bool>>& adj,
             const size_t limit,
 #ifdef FullCoverage
-            const uint pd,
+            uint pd,
 #endif
 #ifdef CP2LE
-            const uint md,
+            uint md,
 #endif
             std::vector<std::vector<std::vector<ui>>>& cs,
             std::vector<std::vector<bool>>& csf,
@@ -313,7 +313,7 @@ private:
     static void generateBN(const Graph *query_graph, ui *order, ui *pivot, ui **&bn, ui *&bn_count);
     static void generateBN(const Graph *query_graph, ui *order, ui **&bn, ui *&bn_count);
     // MatCoでprune_depth_, mutiexp_depth_と言う値を使いたい
-    static ui PruneDepth(const Graph *query_graph, ui *order);
+    static ui PruneDepth(const Graph *query_graph, MatCoContext& context);
     static ui MutiexpDepth(const Graph *query_graph, MatCoContext& context);
 
     static void allocateBuffer(const Graph *query_graph, const Graph *data_graph, ui *candidates_count, ui *&idx,

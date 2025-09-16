@@ -8238,7 +8238,7 @@ EvaluateQuery::DIVSMFE(const Graph *data_graph, const Graph *query_graph,ui *&no
     return s;
 }
 
-ui EvaluateQuery::PruneDepth(const Graph *query_graph, ui *order){
+ui EvaluateQuery::PruneDepth(const Graph *query_graph, MatCoContext& context){
     ui prune_depth;
     std:: vector<bool> AllRN(query_graph->getVerticesCount(), false);
     for (ui i = 0; i < query_graph->getVerticesCount()-1; i++){
@@ -8246,7 +8246,7 @@ ui EvaluateQuery::PruneDepth(const Graph *query_graph, ui *order){
         cnt_7 = 0;
         std::fill(AllRN.begin(), AllRN.end(), false);
         for (ui s = 0; s <= i; s++){
-            ui uf = order[s];
+            ui uf = context.order[s];
             ui neighbor_count; 
 
             const ui* nbrs_ptr = query_graph->getVertexNeighbors(uf, neighbor_count);
@@ -8269,7 +8269,7 @@ ui EvaluateQuery::PruneDepth(const Graph *query_graph, ui *order){
         }
         bool flag = true;
         for (ui j = i+1; j<query_graph->getVerticesCount(); j++){
-            ui ub = order[j];
+            ui ub = context.order[j];
             std::cout<<"check vertex: "<<ub<<std::endl;
             std::cout<<"AllRN[ub]: "<<AllRN[ub]<<std::endl;
             if (!AllRN[ub]){
@@ -8512,7 +8512,10 @@ EvaluateQuery::MatCo(const Graph *query_graph, const Graph *data_graph, ui **can
         TimeL
     );
 
-    mutiexp_depth = MutiexpDepth(query_graph, context);
+    context.mutiexp_depth = MutiexpDepth(query_graph, context);
+
+    context.prune_depth = PruneDepth(query_graph, context);
+    std::cout<<"Prune_Depth is: "<<context.prune_depth<<std::endl;
 
     ui start_query_vertex = order[0];
     std::vector<ui> initial_match(qsize, UNMATCHED);
@@ -8861,6 +8864,8 @@ void EvaluateQuery::FindMatCo(ui depth, std::vector<ui>& current_match, MatCoCon
         // }
         //context.call_count++;
 
+        //std::cout<<"depth: "<<depth<<", prune_depth: "<<context.prune_depth<<std::endl;
+
         if (depth >= context.prune_depth){
             //context.call_count++;
             if (fullCoveragePrune(depth, current_match, context)){
@@ -8871,6 +8876,7 @@ void EvaluateQuery::FindMatCo(ui depth, std::vector<ui>& current_match, MatCoCon
     //context.call_count++;
     #ifdef CP2LE
         //std::cout<<"here3"<<std::endl;
+        std::cout<<"muti_depth"<<context.mutiexp_depth<<std::endl;
         if (depth == context.mutiexp_depth){
             //context.call_count++;
             mutiExpansion(current_match, context);
